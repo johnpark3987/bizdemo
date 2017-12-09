@@ -1,82 +1,57 @@
-// import { Notifications } from 'expo';
+import { AppLoading } from 'expo';
 import React, { Component } from 'react';
 import { TabNavigator } from 'react-navigation';
-
+import { connect } from 'react-redux';
 import MainTabNavigator from './MainTabNavigator';
 import AuthNavigator from './AuthNavigator';
-// import registerForPushNotificationsAsync from '../api/registerForPushNotificationsAsync';
+import * as actions from '../actions';
 
-const RootTabNavigator = TabNavigator(
-  {
-    Auth: {
-      screen: AuthNavigator,
+const RootTabNavigator = (hasToken = false) => {
+  return TabNavigator(
+    {
+      Auth: {
+        screen: AuthNavigator,
+      },
+      Main: {
+        screen: MainTabNavigator,
+      },
     },
-    Main: {
-      screen: MainTabNavigator,
-    },
-  },
-  {
-    navigationOptions: ({ navigation }) => ({
-      // tabBarIcon: ({ focused }) => {
-      //   const { routeName } = navigation.state;
-      //   let iconName;
-      //   switch (routeName) {
-      //     case 'Home':
-      //       iconName =
-      //         Platform.OS === 'ios'
-      //           ? `ios-information-circle${focused ? '' : '-outline'}`
-      //           : 'md-information-circle';
-      //       break;
-      //     case 'Links':
-      //       iconName = Platform.OS === 'ios' ? `ios-link${focused ? '' : '-outline'}` : 'md-link';
-      //       break;
-      //     case 'Settings':
-      //       iconName =
-      //         Platform.OS === 'ios' ? `ios-options${focused ? '' : '-outline'}` : 'md-options';
-      //   }
-      //   return (
-      //     <Ionicons
-      //       name={iconName}
-      //       size={28}
-      //       style={{ marginBottom: -3 }}
-      //       color={focused ? Colors.tabIconSelected : Colors.tabIconDefault}
-      //     />
-      //   );
-      // },
-      tabBarVisible: false
-    }),
-    // tabBarComponent: TabBarBottom,
-    lazy: true,
-    animationEnabled: false,
-    swipeEnabled: false,
-  }
-);
+    {
+      navigationOptions: ({ navigation }) => ({
+        tabBarVisible: false
+      }),
+      lazy: true,
+      animationEnabled: false,
+      swipeEnabled: false,
+      initialRouteName: hasToken ? "Main" : "Auth"
+    }
+  );
+};
 
-export default class RootNavigator extends Component {
-  componentDidMount() {
-    // this._notificationSubscription = this._registerForPushNotifications();
+class RootNavigator extends Component {
+  componentWillMount() {
+    this.props.checkForUser();
   }
-
-  componentWillUnmount() {
-    // this._notificationSubscription && this._notificationSubscription.remove();
+  
+  renderRoot = () => {
+    switch (this.props.hasToken) {
+      case null:
+        return <AppLoading />
+      default:
+        const Root = RootTabNavigator(this.props.hasToken);
+        return <Root />;
+    }
   }
 
   render() {
-    return <RootTabNavigator />;
+    return this.renderRoot();
   }
+};
 
-  // _registerForPushNotifications() {
-  //   // Send our push token over to our backend so we can receive notifications
-  //   // You can comment the following line out if you want to stop receiving
-  //   // a notification every time you open the app. Check out the source
-  //   // for this function in api/registerForPushNotificationsAsync.js
-  //   registerForPushNotificationsAsync();
-  //
-  //   // Watch for incoming notifications
-  //   this._notificationSubscription = Notifications.addListener(this._handleNotification);
-  // }
-  //
-  // _handleNotification = ({ origin, data }) => {
-  //   console.log(`Push notification ${origin} with data: ${JSON.stringify(data)}`);
-  // };
-}
+const mapStateToProps = ({ auth }) => {
+  return {
+    hasToken: auth.hasToken
+  };
+};
+
+export default connect(mapStateToProps, actions)(RootNavigator);

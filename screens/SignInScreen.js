@@ -27,7 +27,17 @@ class SignInScreen extends Component {
       "userPassword" : this.props.password
     }
     this.props.tryLoginUser(userObj);
-    // this.props.navigation.navigate('Main');
+  }
+
+  componentWillReceiveProps(nextProps) {
+    this.onAuthComplete(nextProps);
+  }
+
+  onAuthComplete(props) {
+    if (props.user) {
+      console.log(props.user);
+      this.props.navigation.navigate('Main');
+    }
   }
 
   onEmailChange = (value) => {
@@ -103,8 +113,6 @@ class SignInScreen extends Component {
 
 const styles = StyleSheet.create({
   loginLogoStyle: {
-    // flex: 1,
-    // alignItems: 'center',
     justifyContent: 'center'
   },
   logoContainerStyle: {
@@ -121,7 +129,8 @@ const mapStateToProps = ({ auth }) => {
   console.log('mapStateToProps');
   return {
     email: auth.email,
-    password: auth.password
+    password: auth.password,
+    user: auth.user
   }
 }
 

@@ -1,8 +1,10 @@
 import axios from 'axios';
+import { AsyncStorage } from 'react-native';
 import {
+  USER_INFO_AVAILABLE,
+  USER_INFO_NOT_AVAILABLE,
   EMAIL_CHANGED,
   PASSWORD_CHANGED,
-  TRY_LOGIN_USER,
   LOGIN_USER_SUCCESS,
   LOGIN_USER_ERROR,
   FORGOT_PASSWORD
@@ -11,7 +13,6 @@ import {
 const globalUrl =  "https://api.fixnapp.com/v2";
 
 export const emailChanged = (value) => {
-  console.log(value);
   return {
     type: EMAIL_CHANGED,
     payload: value
@@ -19,54 +20,57 @@ export const emailChanged = (value) => {
 };
 
 export const passwordChanged = (value) => {
-  console.log("value");
-  
   return {
     type: PASSWORD_CHANGED,
     payload: value
   };
 };
 
-export const fetchJobs = (region, callback) => async dispatch => {
-  try {
-    let zip = await reverseGeocode(region);
-    const url = buildJobsUrl(zip);
-    let { data } = await axios.get(url);
-    console.log(data);
-    dispatch({ type: FETCH_JOBS, payload: data });
-    callback();
-  } catch (e) {
-    dispatch({ type: FETCH_JOBS_ERROR, payload: e });
-    console.error(e);
+export const checkForUser = () => async dispatch => {
+  let token = await AsyncStorage.getItem('userInfo');
+  if(token === null || !token) {
+    dispatch({ type: USER_INFO_NOT_AVAILABLE });
+  } else {
+    dispatch({ type: USER_INFO_AVAILABLE });
   }
 };
 
 export const tryLoginUser = (user) =>  async dispatch => {
-  console.log(user);
   try {
     const loginApiUrl = `${globalUrl}/member/login/`;
-    // axios
-    let loginFormdata = new FormData();
-    loginFormdata.append("oauth_provider", "fixnapp");
-    loginFormdata.append("userid", "john@fixnapp.com");
-    loginFormdata.append("notification_id", "sdfgewgege");
-    loginFormdata.append("device_uid", "123123");
-    loginFormdata.append("device_serial", "1242323");
-    loginFormdata.append("oauth_uid", "102020695161104582613");
-    loginFormdata.append("first_name", "eee");
-    loginFormdata.append("last_name", "eee");
+    const loginFormdata = await readyLoginForm(user);
+    let { data } = await axios.post(loginApiUrl, loginFormdata);
+    if (data.status == "false") {
+      dispatch({ type: LOGIN_USER_ERROR, payload: data });
+    }
 
-    // let config = user
-    let data = await axios.post(loginApiUrl, loginFormdata)
-    console.log(data);
-    // console.log('user');
-    // console.log(user);
-
-    dispatch({ type: LOGIN_USER_SUCCESS, payload: data })
-    // return {
-    //   type: TRY_LOGIN_USER
-    // }
+    const userData = {
+      firstName: data.data.first_name,
+      lastName: data.data.last_name,
+      oAuthToken: data.data.oauth_token,
+      userId: data.data.userid
+    };
+    let test = JSON.stringify(userData);
+    await AsyncStorage.setItem('userInfo', test);
+    dispatch({ type: LOGIN_USER_SUCCESS, payload: userData });
   } catch (e) {
-    console.log(e);
+    dispatch({ type: LOGIN_USER_ERROR, payload: e });
   }
+};
+
+const readyLoginForm = async user => {
+  let loginForm = new FormData();
+  loginForm.append("oauth_provider", "fixnapp");
+
+  // await notifications, device info
+
+  // loginForm.append("oauth_uid", "102020695161104582613");
+  // loginForm.append("first_name", "eee");
+  // loginForm.append("last_name", "eee");
+  loginForm.append("userid", user.userEmail);
+  loginForm.append("password", user.userPassword);
+  loginForm.append("notification_id", "sdfgewgege");
+  loginForm.append("device_uid", "123123");
+  loginForm.append("device_serial", "1242323");
+  return loginForm;
 };
